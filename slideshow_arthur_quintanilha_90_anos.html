@@ -377,6 +377,103 @@
       transform: scale(1.02);
     }
 
+    .film-tracks {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 300ms ease;
+    }
+
+    .film-tracks.visible {
+      opacity: 1;
+    }
+
+    .film-strip {
+      position: absolute;
+      left: -10%;
+      width: 120%;
+      height: 180px;
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      padding: 14px 18px;
+      background:
+        linear-gradient(180deg, rgba(10, 10, 12, 0.9), rgba(26, 26, 30, 0.82));
+      border-top: 8px solid rgba(8, 8, 10, 0.95);
+      border-bottom: 8px solid rgba(8, 8, 10, 0.95);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.34);
+      overflow: hidden;
+    }
+
+    .film-strip::before,
+    .film-strip::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 12px;
+      background-image: repeating-linear-gradient(
+        90deg,
+        rgba(245, 245, 245, 0.92) 0 18px,
+        transparent 18px 38px
+      );
+      opacity: 0.88;
+    }
+
+    .film-strip::before {
+      top: 4px;
+    }
+
+    .film-strip::after {
+      bottom: 4px;
+    }
+
+    .film-strip.top {
+      top: 8%;
+      animation: filmMoveRight 44s linear infinite;
+    }
+
+    .film-strip.bottom {
+      bottom: 8%;
+      animation: filmMoveLeft 48s linear infinite;
+    }
+
+    .film-reel {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .film-frame {
+      flex: 0 0 220px;
+      height: 126px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 3px solid rgba(255, 235, 180, 0.14);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .film-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.9;
+      filter: saturate(0.95) contrast(1.02);
+    }
+
+    @keyframes filmMoveRight {
+      from { transform: translateX(-12%); }
+      to { transform: translateX(0%); }
+    }
+
+    @keyframes filmMoveLeft {
+      from { transform: translateX(0%); }
+      to { transform: translateX(-12%); }
+    }
+
     .message-card {
       max-width: min(960px, 90vw);
       text-align: center;
@@ -914,6 +1011,26 @@
       .actions-note {
         font-size: 0.84rem;
       }
+
+      .message-card.narrative {
+        width: min(1200px, 88vw);
+        max-width: min(1200px, 88vw);
+        padding: 24px 28px;
+      }
+
+      .message-text.narrative {
+        font-size: clamp(1rem, 1.45vw, 1.55rem);
+        line-height: 1.35;
+      }
+
+      .film-strip {
+        height: 138px;
+      }
+
+      .film-frame {
+        flex-basis: 170px;
+        height: 90px;
+      }
     }
 
     @media (max-width: 900px) {
@@ -1026,6 +1143,10 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
 
   <main class="stage">
     <div class="message-slide active" id="messageLayer">
+      <div class="film-tracks" id="filmTracks">
+        <div class="film-strip top"><div class="film-reel" id="filmReelTop"></div></div>
+        <div class="film-strip bottom"><div class="film-reel" id="filmReelBottom"></div></div>
+      </div>
       <div class="message-card">
         <h2 class="message-title" id="messageTitle">Arthur Quintanilha</h2>
         <p class="message-text" id="messageText">90 anos</p>
@@ -1175,6 +1296,9 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     const slideA = document.getElementById("slideA");
     const slideB = document.getElementById("slideB");
     const messageLayer = document.getElementById("messageLayer");
+    const filmTracks = document.getElementById("filmTracks");
+    const filmReelTop = document.getElementById("filmReelTop");
+    const filmReelBottom = document.getElementById("filmReelBottom");
     const messageCard = document.querySelector(".message-card");
     const messageTitle = document.getElementById("messageTitle");
     const messageText = document.getElementById("messageText");
@@ -1227,7 +1351,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     let createdAudioUrls = [];
     const configStorageKey = "arthur-quintanilha-90-config-v1";
     let activeEditorTab = "timings";
-    const backgroundVoiceBedVolume = 0.33;
+    const backgroundVoiceBedVolume = 0.18;
     const mainMusicVolume = 1;
 
     function setDurations() {
@@ -1349,6 +1473,36 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       loadingOverlay.classList.toggle("visible", visible);
       loadingFill.style.width = `${Math.max(0, Math.min(progress, 100))}%`;
       loadingStatus.textContent = text;
+    }
+
+    function shuffleArray(items) {
+      const copy = [...items];
+      for (let index = copy.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+      }
+      return copy;
+    }
+
+    function renderFilmReel(target, images) {
+      target.innerHTML = "";
+      const frames = [...images, ...images.slice(0, Math.min(6, images.length))];
+      frames.forEach((src) => {
+        const frame = document.createElement("div");
+        frame.className = "film-frame";
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "";
+        frame.appendChild(img);
+        target.appendChild(frame);
+      });
+    }
+
+    function prepareFilmTracks() {
+      const shuffledTop = shuffleArray(baseImages);
+      const shuffledBottom = shuffleArray(baseImages);
+      renderFilmReel(filmReelTop, shuffledTop);
+      renderFilmReel(filmReelBottom, shuffledBottom);
     }
 
     function revokeAudioUrls() {
@@ -1669,11 +1823,13 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
 
       if (item.type === "message") {
         if (item.audioSrc) {
+          filmTracks.classList.add("visible");
           messageCard.classList.add("narrative");
           messageTitle.classList.add("hidden");
           messageText.classList.add("narrative");
           messageText.textContent = item.message;
         } else {
+          filmTracks.classList.remove("visible");
           const fallbackTitle = index === 0 ? "Arthur Quintanilha" : "Até breve";
           const parts = getMessageParts(item.message, fallbackTitle);
           messageCard.classList.remove("narrative");
@@ -1799,6 +1955,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       editorScreen.classList.remove("hidden");
       clearAllLayers();
       messageLayer.classList.add("active");
+      filmTracks.classList.remove("visible");
       const parts = getMessageParts(config.firstMessage, "Arthur Quintanilha");
       messageCard.classList.remove("narrative");
       messageTitle.classList.remove("hidden");
@@ -2074,6 +2231,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     buildSequence();
     setDurations();
     preparePlaylist();
+    prepareFilmTracks();
     createSparkles();
     setupFireworks();
     showSequenceItem(0, true);
