@@ -103,6 +103,21 @@
       filter: drop-shadow(0 0 14px rgba(255, 187, 52, 0.35));
     }
 
+    .mobile-tabs {
+      display: none;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .mobile-tab-button {
+      flex: 1 1 120px;
+    }
+
+    .mobile-tab-button.active {
+      filter: brightness(1.08);
+      box-shadow: 0 10px 22px rgba(255, 185, 42, 0.28);
+    }
+
     .editor-layout {
       display: grid;
       grid-template-columns: minmax(320px, 460px) 1fr;
@@ -287,6 +302,20 @@
     .actions-note {
       color: rgba(255, 247, 227, 0.76);
       font-size: 0.92rem;
+    }
+
+    .play-fab {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 90;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-width: 132px;
+      padding: 14px 18px;
+      border-radius: 999px;
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32);
     }
 
     .stage {
@@ -704,6 +733,20 @@
         font-size: 0.84rem;
       }
     }
+
+    @media (max-width: 900px) {
+      .mobile-tabs {
+        display: flex;
+      }
+
+      .play-fab {
+        display: inline-flex;
+      }
+
+      .actions-group #playButton {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -720,10 +763,16 @@
       </div>
     </div>
 
+    <div class="mobile-tabs" id="mobileTabs">
+      <button class="mobile-tab-button" type="button" data-tab="timings">Tempos</button>
+      <button class="mobile-tab-button ghost" type="button" data-tab="photos">Fotos</button>
+      <button class="mobile-tab-button ghost" type="button" data-tab="messages">Mensagens</button>
+    </div>
+
     <div class="editor-layout">
-      <div class="settings-card">
+      <div class="settings-card" id="settingsCard">
         <h2 class="card-title">Configurações</h2>
-        <div class="fields">
+        <div class="fields" id="timingsPanel">
           <div class="field">
             <label for="displaySeconds">Tempo de cada foto (segundos)</label>
             <input id="displaySeconds" type="number" min="1" step="0.5" value="3.5">
@@ -733,7 +782,9 @@
             <label for="transitionSeconds">Duração da transição (segundos)</label>
             <input id="transitionSeconds" type="number" min="0.3" step="0.1" value="1.4">
           </div>
+        </div>
 
+        <div class="fields" id="messagesPanel">
           <div class="field">
             <label for="firstMessage">Mensagem do primeiro slide</label>
             <textarea id="firstMessage">Arthur Quintanilha
@@ -754,7 +805,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
         </div>
       </div>
 
-      <div class="list-card">
+      <div class="list-card" id="listCard">
         <h2 class="card-title">Fotos e legendas</h2>
         <div class="list-meta">Reorganize a ordem das fotos e escreva legendas opcionais.</div>
         <div class="photo-list" id="photoList"></div>
@@ -771,6 +822,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       </div>
       <div class="actions-note">No modo apresentação aparece apenas foto, legenda, efeitos e transições.</div>
     </div>
+    <button id="playFab" class="play-fab" type="button">Play</button>
   </section>
 
   <div class="orientation-overlay" id="orientationOverlay">
@@ -922,6 +974,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     const lastMessageSecondsInput = document.getElementById("lastMessageSeconds");
     const photoList = document.getElementById("photoList");
     const playButton = document.getElementById("playButton");
+    const playFab = document.getElementById("playFab");
     const saveButton = document.getElementById("saveButton");
     const loadButton = document.getElementById("loadButton");
     const resetButton = document.getElementById("resetButton");
@@ -931,6 +984,11 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     const loadingFill = document.getElementById("loadingFill");
     const loadingStatus = document.getElementById("loadingStatus");
     const actionsNote = document.querySelector(".actions-note");
+    const mobileTabButtons = Array.from(document.querySelectorAll(".mobile-tab-button"));
+    const settingsCard = document.getElementById("settingsCard");
+    const listCard = document.getElementById("listCard");
+    const timingsPanel = document.getElementById("timingsPanel");
+    const messagesPanel = document.getElementById("messagesPanel");
 
     const slideA = document.getElementById("slideA");
     const slideB = document.getElementById("slideB");
@@ -958,6 +1016,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     let loadedPlaylist = [];
     let createdAudioUrls = [];
     const configStorageKey = "arthur-quintanilha-90-config-v1";
+    let activeEditorTab = "timings";
 
     function setDurations() {
       displayDuration = Math.max(1000, Number(config.displaySeconds || 3.5) * 1000);
@@ -1006,6 +1065,37 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       const url = new URL(window.location.href);
       url.searchParams.set("state", "play");
       return url.toString();
+    }
+
+    function isMobileEditorView() {
+      return window.matchMedia("(max-width: 900px)").matches;
+    }
+
+    function setActiveEditorTab(tab) {
+      activeEditorTab = tab;
+
+      if (!isMobileEditorView()) {
+        settingsCard.hidden = false;
+        listCard.hidden = false;
+        timingsPanel.hidden = false;
+        messagesPanel.hidden = false;
+      } else if (tab === "photos") {
+        settingsCard.hidden = true;
+        listCard.hidden = false;
+        timingsPanel.hidden = true;
+        messagesPanel.hidden = true;
+      } else {
+        settingsCard.hidden = false;
+        listCard.hidden = true;
+        timingsPanel.hidden = tab !== "timings";
+        messagesPanel.hidden = tab !== "messages";
+      }
+
+      mobileTabButtons.forEach((button) => {
+        const isActive = button.dataset.tab === activeEditorTab;
+        button.classList.toggle("active", isActive);
+        button.classList.toggle("ghost", !isActive);
+      });
     }
 
     function normalizeMessage(value, fallback) {
@@ -1159,6 +1249,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     function updateOrientationGate() {
       const locked = isMobilePortrait();
       playButton.disabled = locked && !playing;
+      playFab.disabled = locked && !playing;
       actionsNote.textContent = locked
         ? "No celular em pé você pode configurar. Vire para horizontal para liberar o Play."
         : "No modo apresentação aparece apenas foto, legenda, efeitos e transições.";
@@ -1604,8 +1695,12 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     }
 
     playButton.addEventListener("click", startPlayback);
+    playFab.addEventListener("click", startPlayback);
     saveButton.addEventListener("click", downloadConfig);
     loadButton.addEventListener("click", () => loadInput.click());
+    mobileTabButtons.forEach((button) => {
+      button.addEventListener("click", () => setActiveEditorTab(button.dataset.tab));
+    });
     [
       displaySecondsInput,
       transitionSecondsInput,
@@ -1675,6 +1770,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       applyLoadedConfig(persistedConfig);
     }
 
+    setActiveEditorTab(activeEditorTab);
     fillFormFromConfig();
     buildSequence();
     setDurations();
@@ -1686,6 +1782,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
 
     window.addEventListener("resize", updateOrientationGate);
     window.addEventListener("orientationchange", updateOrientationGate);
+    window.addEventListener("resize", () => setActiveEditorTab(activeEditorTab));
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("state") === "play") {
