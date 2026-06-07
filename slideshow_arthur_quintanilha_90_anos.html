@@ -388,6 +388,14 @@
       backdrop-filter: blur(10px);
     }
 
+    .message-card.narrative {
+      width: min(1400px, 92vw);
+      max-width: min(1400px, 92vw);
+      padding: 34px 44px;
+      text-align: left;
+      background: linear-gradient(180deg, rgba(22, 22, 28, 0.92), rgba(12, 12, 16, 0.9));
+    }
+
     .message-title {
       margin: 0 0 14px;
       font-size: clamp(2.2rem, 5vw, 4.6rem);
@@ -407,6 +415,20 @@
       line-height: 1.6;
       color: rgba(255, 246, 224, 0.92);
       white-space: pre-wrap;
+    }
+
+    .message-title.hidden {
+      display: none;
+    }
+
+    .message-text.narrative {
+      font-size: clamp(1.45rem, 2vw, 2.4rem);
+      line-height: 1.45;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: rgba(255, 247, 227, 0.97);
+      text-align: center;
+      text-wrap: balance;
     }
 
     .caption {
@@ -1153,6 +1175,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     const slideA = document.getElementById("slideA");
     const slideB = document.getElementById("slideB");
     const messageLayer = document.getElementById("messageLayer");
+    const messageCard = document.querySelector(".message-card");
     const messageTitle = document.getElementById("messageTitle");
     const messageText = document.getElementById("messageText");
     const captionBox = document.getElementById("captionBox");
@@ -1169,14 +1192,43 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     let playing = false;
     let playlistIndex = 0;
     const playlist = ["musica1.mp3", "musica2.mp3"];
+    const voicePlaylist = ["voz1.mp3", "voz2.mp3", "voz3.mp3", "voz4.mp3"];
+    const voicedFinalSlides = [
+      {
+        type: "message",
+        message: "Hoje celebramos não apenas 90 anos de vida, mas 90 anos de história, ensinamentos, amor e legado.\n\nQuerido Arthur Quintanilha, sua trajetória é motivo de orgulho para toda a família. Ao longo desses anos, o senhor construiu uma vida marcada pela honestidade, pela força, pela dedicação e pelo carinho com todos os que tiveram o privilégio de caminhar ao seu lado. Cada lembrança compartilhada, cada conselho dado, cada gesto de amor deixou marcas profundas em nossos corações.",
+        audioSrc: "voz1.mp3",
+        postAudioDelay: 1200
+      },
+      {
+        type: "message",
+        message: "Neste dia tão especial, queremos agradecer por tudo o que o senhor representa para nossa família. Somos gratos por sua presença, por sua sabedoria e pelo amor que sempre nos ofereceu.\n\nQue deus continue abençoando sua vida com saúde, paz, alegria e muitos momentos felizes ao lado daqueles que o amam. Parabéns pelos seus 90 anos, com todo nosso amor, carinho e admiração",
+        audioSrc: "voz2.mp3",
+        postAudioDelay: 1200
+      },
+      {
+        type: "message",
+        message: "Sua família.",
+        audioSrc: "voz3.mp3",
+        postAudioDelay: 1200
+      },
+      {
+        type: "message",
+        message: "Feliz aniversário senhor Arthur!",
+        audioSrc: "voz4.mp3",
+        postAudioDelay: 5000
+      }
+    ];
     let pausedForOrientation = false;
     let finalizingPresentation = false;
     let musicFadeTimer = null;
     let preloadPromise = null;
-    let loadedPlaylist = [];
+    let loadedAudioMap = {};
     let createdAudioUrls = [];
     const configStorageKey = "arthur-quintanilha-90-config-v1";
     let activeEditorTab = "timings";
+    const backgroundVoiceBedVolume = 0.33;
+    const mainMusicVolume = 1;
 
     function setDurations() {
       displayDuration = Math.max(1000, Number(config.displaySeconds || 3.5) * 1000);
@@ -1282,7 +1334,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       sequence = [
         { type: "message", message: config.firstMessage },
         ...config.photos.map((photo) => ({ type: "photo", photo })),
-        { type: "message", message: config.lastMessage }
+        ...voicedFinalSlides
       ];
     }
 
@@ -1300,13 +1352,14 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
     }
 
     function revokeAudioUrls() {
-      createdAudioUrls.forEach((url) => URL.revokeObjectURL(url));
-      createdAudioUrls = [];
+      loadedAudioMap = {};
     }
 
     async function preloadPlaylist() {
-      if (loadedPlaylist.length === playlist.length) {
-        return loadedPlaylist;
+      const audioFiles = [...playlist, ...voicePlaylist];
+
+      if (Object.keys(loadedAudioMap).length === audioFiles.length) {
+        return loadedAudioMap;
       }
 
       if (preloadPromise) {
@@ -1314,27 +1367,38 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       }
 
       revokeAudioUrls();
-      setLoadingState(true, 4, "Carregando música 1 de 2…");
+      setLoadingState(true, 4, "Carregando áudio 1…");
 
       preloadPromise = (async () => {
-        const results = [];
+        for (let index = 0; index < audioFiles.length; index += 1) {
+          const file = audioFiles[index];
+          setLoadingState(true, 15 + (index / audioFiles.length) * 65, `Carregando áudio ${index + 1} de ${audioFiles.length}…`);
+          await new Promise((resolve, reject) => {
+            const audio = new Audio();
+            const cleanup = () => {
+              audio.removeEventListener("canplaythrough", handleReady);
+              audio.removeEventListener("error", handleError);
+            };
+            const handleReady = () => {
+              cleanup();
+              loadedAudioMap[file] = file;
+              resolve();
+            };
+            const handleError = () => {
+              cleanup();
+              reject(new Error(`Falha ao carregar ${file}`));
+            };
 
-        for (let index = 0; index < playlist.length; index += 1) {
-          const file = playlist[index];
-          setLoadingState(true, 15 + (index / playlist.length) * 65, `Carregando música ${index + 1} de ${playlist.length}…`);
-          const response = await fetch(file, { cache: "force-cache" });
-          if (!response.ok) {
-            throw new Error(`Falha ao carregar ${file}`);
-          }
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          createdAudioUrls.push(url);
-          results.push(url);
+            audio.preload = "auto";
+            audio.src = file;
+            audio.addEventListener("canplaythrough", handleReady, { once: true });
+            audio.addEventListener("error", handleError, { once: true });
+            audio.load();
+          });
         }
 
-        loadedPlaylist = results;
-        setLoadingState(true, 100, "Músicas prontas.");
-        return results;
+        setLoadingState(true, 100, "Áudios prontos.");
+        return loadedAudioMap;
       })();
 
       try {
@@ -1348,30 +1412,49 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       return window.matchMedia("(max-width: 900px) and (orientation: portrait)").matches;
     }
 
+    function getAudioSource(file) {
+      return loadedAudioMap[file] || file;
+    }
+
     function preparePlaylist() {
       playlistIndex = 0;
-      const sourceList = loadedPlaylist.length === playlist.length ? loadedPlaylist : playlist;
-      backgroundMusic.src = sourceList[playlistIndex];
+      backgroundMusic.src = getAudioSource(playlist[playlistIndex]);
       backgroundMusic.load();
     }
 
     function playBackgroundMusic() {
       playlistIndex = 0;
-      const sourceList = loadedPlaylist.length === playlist.length ? loadedPlaylist : playlist;
-      backgroundMusic.src = sourceList[playlistIndex];
+      backgroundMusic.src = getAudioSource(playlist[playlistIndex]);
       backgroundMusic.currentTime = 0;
+      backgroundMusic.volume = mainMusicVolume;
       backgroundMusic.play().catch(() => {});
     }
 
     function stopBackgroundMusic() {
       window.clearInterval(musicFadeTimer);
       musicFadeTimer = null;
+      sequence.forEach((item) => {
+        if (item && item._voiceAudio) {
+          item._voiceAudio.pause();
+          item._voiceAudio.currentTime = 0;
+          item._voiceAudio = null;
+        }
+      });
       backgroundMusic.pause();
       backgroundMusic.currentTime = 0;
-      backgroundMusic.volume = 1;
+      backgroundMusic.volume = mainMusicVolume;
       playlistIndex = 0;
-      const sourceList = loadedPlaylist.length === playlist.length ? loadedPlaylist : playlist;
-      backgroundMusic.src = sourceList[playlistIndex];
+      backgroundMusic.src = getAudioSource(playlist[playlistIndex]);
+    }
+
+    function ensureVoiceBedMusic() {
+      if (playlistIndex !== 1) {
+        playlistIndex = 1;
+        backgroundMusic.src = getAudioSource(playlist[playlistIndex]);
+        backgroundMusic.currentTime = 0;
+      }
+      backgroundMusic.volume = backgroundVoiceBedVolume;
+      backgroundMusic.play().catch(() => {});
     }
 
     async function enterFullscreen() {
@@ -1449,6 +1532,39 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
         layer.classList.remove("final-fadeout");
         layer.classList.remove("active");
       });
+    }
+
+    function playSequenceAudio(item) {
+      if (!item || !item.audioSrc) {
+        return;
+      }
+
+      window.clearInterval(musicFadeTimer);
+      musicFadeTimer = null;
+      ensureVoiceBedMusic();
+
+      const voiceAudio = new Audio(getAudioSource(item.audioSrc));
+      voiceAudio.preload = "auto";
+      voiceAudio.volume = mainMusicVolume;
+      voiceAudio.currentTime = 0;
+      voiceAudio.addEventListener("ended", () => {
+        if (!playing || finalizingPresentation) {
+          return;
+        }
+        const nextIndex = currentSequenceIndex + 1;
+        if (nextIndex < sequence.length) {
+          timerId = window.setTimeout(() => {
+            showSequenceItem(nextIndex);
+            scheduleNext();
+          }, Number(item.postAudioDelay || 1200));
+          return;
+        }
+        timerId = window.setTimeout(() => {
+          finalizePresentation();
+        }, Number(item.postAudioDelay || 5000));
+      }, { once: true });
+      voiceAudio.play().catch(() => {});
+      item._voiceAudio = voiceAudio;
     }
 
     function updateCaption(text) {
@@ -1552,10 +1668,20 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       clearTransitionClasses(toLayer);
 
       if (item.type === "message") {
-        const fallbackTitle = index === 0 ? "Arthur Quintanilha" : "Até breve";
-        const parts = getMessageParts(item.message, fallbackTitle);
-        messageTitle.textContent = parts.title;
-        messageText.textContent = parts.body;
+        if (item.audioSrc) {
+          messageCard.classList.add("narrative");
+          messageTitle.classList.add("hidden");
+          messageText.classList.add("narrative");
+          messageText.textContent = item.message;
+        } else {
+          const fallbackTitle = index === 0 ? "Arthur Quintanilha" : "Até breve";
+          const parts = getMessageParts(item.message, fallbackTitle);
+          messageCard.classList.remove("narrative");
+          messageTitle.classList.remove("hidden");
+          messageText.classList.remove("narrative");
+          messageTitle.textContent = parts.title;
+          messageText.textContent = parts.body;
+        }
         updateCaption("");
       } else {
         const img = toLayer.querySelector("img");
@@ -1599,6 +1725,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       }
 
       currentSequenceIndex = index;
+      playSequenceAudio(item);
     }
 
     function scheduleNext() {
@@ -1607,6 +1734,9 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
         return;
       }
       const currentItem = sequence[currentSequenceIndex];
+      if (currentItem && currentItem.audioSrc) {
+        return;
+      }
       const isLastMessage = currentItem && currentItem.type === "message" && currentSequenceIndex === sequence.length - 1;
       const waitDuration = isLastMessage
         ? Math.max(1000, Number(config.lastMessageSeconds || defaultConfig.lastMessageSeconds) * 1000)
@@ -1670,6 +1800,9 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       clearAllLayers();
       messageLayer.classList.add("active");
       const parts = getMessageParts(config.firstMessage, "Arthur Quintanilha");
+      messageCard.classList.remove("narrative");
+      messageTitle.classList.remove("hidden");
+      messageText.classList.remove("narrative");
       messageTitle.textContent = parts.title;
       messageText.textContent = parts.body;
       updateCaption("");
@@ -1922,8 +2055,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       }
       if (playlistIndex < playlist.length - 1) {
         playlistIndex += 1;
-        const sourceList = loadedPlaylist.length === playlist.length ? loadedPlaylist : playlist;
-        backgroundMusic.src = sourceList[playlistIndex];
+        backgroundMusic.src = getAudioSource(playlist[playlistIndex]);
         backgroundMusic.currentTime = 0;
         backgroundMusic.play().catch(() => {});
         return;
