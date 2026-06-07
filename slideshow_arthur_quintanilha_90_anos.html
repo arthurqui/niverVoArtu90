@@ -19,6 +19,10 @@
       box-sizing: border-box;
     }
 
+    [hidden] {
+      display: none !important;
+    }
+
     html, body {
       margin: 0;
       min-height: 100%;
@@ -611,14 +615,34 @@
     }
 
     @media (max-width: 700px) {
+      .editor-screen {
+        gap: 10px;
+        padding: 12px;
+      }
+
       .hero-card,
       .actions-card {
-        padding: 16px;
+        padding: 12px;
       }
 
       .hero-card {
         flex-direction: column;
         align-items: flex-start;
+        gap: 10px;
+      }
+
+      .hero-title {
+        font-size: 2rem;
+      }
+
+      .hero-subtitle {
+        margin-top: 4px;
+        font-size: 0.8rem;
+      }
+
+      .hero-badges {
+        font-size: 1.5rem;
+        gap: 8px;
       }
 
       .photo-item {
@@ -632,6 +656,93 @@
 
       .photo-actions {
         grid-template-columns: repeat(2, 1fr);
+      }
+
+      .mobile-tabs {
+        gap: 8px;
+      }
+
+      .mobile-tab-button {
+        min-height: 44px;
+        font-size: 0.9rem;
+        padding: 10px 14px;
+      }
+
+      .settings-card,
+      .list-card {
+        padding: 14px;
+      }
+
+      .card-title {
+        margin-bottom: 12px;
+        font-size: 1rem;
+      }
+
+      .field label,
+      .list-meta,
+      .actions-note {
+        font-size: 0.84rem;
+      }
+
+      .field input,
+      .field textarea,
+      .photo-caption {
+        padding: 10px 12px;
+        font-size: 0.92rem;
+      }
+
+      .actions-card {
+        padding: 12px;
+        gap: 10px;
+      }
+
+      .actions-group {
+        gap: 8px;
+      }
+
+      .actions-group button {
+        flex: 1 1 calc(50% - 4px);
+        min-height: 42px;
+        font-size: 0.88rem;
+      }
+
+      .play-fab {
+        right: 12px;
+        bottom: 12px;
+        min-width: 110px;
+        padding: 12px 16px;
+        font-size: 0.9rem;
+      }
+    }
+
+    @media (max-width: 900px) and (orientation: portrait) {
+      .editor-screen {
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .editor-layout {
+        min-height: 0;
+      }
+
+      .settings-card,
+      .list-card {
+        min-height: 0;
+      }
+
+      .photo-list {
+        max-height: calc(100vh - 360px);
+        overflow: auto;
+        padding-right: 6px;
+      }
+
+      .photo-item {
+        gap: 10px;
+      }
+
+      .photo-name {
+        font-size: 0.88rem;
       }
     }
 
@@ -694,18 +805,24 @@
       }
 
       .photo-list {
-        max-height: none;
-        overflow: visible;
+        max-height: calc(100vh - 220px);
+        overflow: auto;
       }
 
       .photo-item {
-        grid-template-columns: 72px 1fr auto;
+        grid-template-columns: 72px minmax(0, 1fr) auto;
         padding: 8px;
       }
 
       .photo-thumb {
         width: 72px;
         height: 54px;
+      }
+
+      .photo-details {
+        grid-template-columns: minmax(110px, 160px) minmax(0, 1fr);
+        align-items: center;
+        gap: 10px;
       }
 
       .photo-caption {
@@ -1067,6 +1184,10 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       return url.toString();
     }
 
+    function showPlayOrientationNotice() {
+      alert("O Play funciona apenas com o celular na horizontal. Gire o aparelho e, se precisar, ative a rotação automática do celular.");
+    }
+
     function isMobileEditorView() {
       return window.matchMedia("(max-width: 900px)").matches;
     }
@@ -1248,8 +1369,6 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
 
     function updateOrientationGate() {
       const locked = isMobilePortrait();
-      playButton.disabled = locked && !playing;
-      playFab.disabled = locked && !playing;
       actionsNote.textContent = locked
         ? "No celular em pé você pode configurar. Vire para horizontal para liberar o Play."
         : "No modo apresentação aparece apenas foto, legenda, efeitos e transições.";
@@ -1463,6 +1582,9 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
         if (isMobilePortrait()) {
           updateOrientationGate();
           setLoadingState(false, 0, "Aguardando…");
+          if (!options.silentNotice) {
+            showPlayOrientationNotice();
+          }
           return;
         }
         setLoadingState(true, 2, "Preparando apresentação…");
@@ -1694,8 +1816,8 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       window.addEventListener("resize", resize);
     }
 
-    playButton.addEventListener("click", startPlayback);
-    playFab.addEventListener("click", startPlayback);
+    playButton.addEventListener("click", () => startPlayback());
+    playFab.addEventListener("click", () => startPlayback());
     saveButton.addEventListener("click", downloadConfig);
     loadButton.addEventListener("click", () => loadInput.click());
     mobileTabButtons.forEach((button) => {
@@ -1737,7 +1859,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       const isPlayState = new URL(window.location.href).searchParams.get("state") === "play";
       if (isPlayState) {
         if (!playing) {
-          startPlayback({ fromHistory: true });
+          startPlayback({ fromHistory: true, silentNotice: true });
         }
         return;
       }
@@ -1789,7 +1911,7 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
       history.replaceState({ menu: true }, "", buildMenuUrl());
       history.pushState({ presentation: true }, "", buildPlayUrl());
       window.setTimeout(() => {
-        startPlayback({ fromHistory: true });
+        startPlayback({ fromHistory: true, silentNotice: true });
       }, 80);
     } else {
       history.replaceState({ menu: true }, "", buildMenuUrl());
