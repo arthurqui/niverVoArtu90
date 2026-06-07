@@ -127,12 +127,14 @@
       grid-template-columns: minmax(320px, 460px) 1fr;
       gap: 18px;
       min-height: 0;
+      min-width: 0;
     }
 
     .settings-card,
     .list-card {
       padding: 20px;
       min-height: 0;
+      min-width: 0;
     }
 
     .card-title {
@@ -309,9 +311,10 @@
     }
 
     .play-fab {
-      position: fixed;
-      right: 18px;
-      bottom: 18px;
+      position: sticky;
+      margin-left: auto;
+      right: auto;
+      bottom: 12px;
       z-index: 90;
       display: none;
       align-items: center;
@@ -618,6 +621,8 @@
       .editor-screen {
         gap: 10px;
         padding: 12px;
+        overflow-x: auto;
+        overflow-y: auto;
       }
 
       .hero-card,
@@ -632,7 +637,8 @@
       }
 
       .hero-title {
-        font-size: 2rem;
+        font-size: 1.72rem;
+        line-height: 0.96;
       }
 
       .hero-subtitle {
@@ -707,8 +713,7 @@
       }
 
       .play-fab {
-        right: 12px;
-        bottom: 12px;
+        bottom: 10px;
         min-width: 110px;
         padding: 12px 16px;
         font-size: 0.9rem;
@@ -717,24 +722,36 @@
 
     @media (max-width: 900px) and (orientation: portrait) {
       .editor-screen {
-        grid-template-rows: auto auto minmax(0, 1fr) auto;
-        height: 100vh;
-        overflow: hidden;
+        grid-template-rows: auto auto auto auto;
+        min-height: 100vh;
+        height: auto;
+        overflow-x: auto;
+        overflow-y: auto;
       }
 
       .editor-layout {
-        min-height: 0;
+        display: block;
+        min-height: auto;
       }
 
       .settings-card,
       .list-card {
-        min-height: 0;
+        min-height: auto;
       }
 
       .photo-list {
-        max-height: calc(100vh - 360px);
+        max-height: calc(100vh - 300px);
         overflow: auto;
         padding-right: 6px;
+      }
+
+      .editor-screen[data-active-tab="photos"] .photo-list {
+        max-height: calc(100vh - 250px);
+      }
+
+      .editor-screen[data-active-tab="messages"] .settings-card,
+      .editor-screen[data-active-tab="timings"] .settings-card {
+        overflow: visible;
       }
 
       .photo-item {
@@ -744,15 +761,24 @@
       .photo-name {
         font-size: 0.88rem;
       }
+
+      .fields {
+        gap: 12px;
+      }
+
+      .field textarea {
+        min-height: 96px;
+      }
     }
 
     @media (max-width: 900px) and (orientation: landscape) {
       .editor-screen {
-        grid-template-rows: auto auto auto;
+        grid-template-rows: auto auto auto auto;
         align-content: start;
         gap: 12px;
         padding: 12px;
-        overflow: auto;
+        overflow-x: auto;
+        overflow-y: auto;
       }
 
       .hero-card,
@@ -780,16 +806,15 @@
       }
 
       .editor-layout {
-        grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
-        gap: 12px;
+        display: block;
         min-height: auto;
-        align-items: start;
       }
 
       .settings-card,
       .list-card {
         min-height: auto;
         padding: 14px;
+        width: 100%;
       }
 
       .list-card {
@@ -805,24 +830,41 @@
       }
 
       .photo-list {
-        max-height: calc(100vh - 220px);
+        max-height: calc(100vh - 210px);
         overflow: auto;
       }
 
+      .editor-screen[data-active-tab="photos"] .photo-list {
+        max-height: calc(100vh - 190px);
+      }
+
       .photo-item {
-        grid-template-columns: 72px minmax(0, 1fr) auto;
+        grid-template-columns: 88px minmax(0, 1fr) auto;
         padding: 8px;
       }
 
       .photo-thumb {
-        width: 72px;
-        height: 54px;
+        width: 88px;
+        height: 66px;
       }
 
       .photo-details {
-        grid-template-columns: minmax(110px, 160px) minmax(0, 1fr);
+        grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
         align-items: center;
         gap: 10px;
+      }
+
+      .photo-name {
+        white-space: normal;
+      }
+
+      .photo-actions {
+        width: 44px;
+      }
+
+      .tiny {
+        min-width: 44px;
+        padding: 8px 10px;
       }
 
       .photo-caption {
@@ -830,20 +872,21 @@
       }
 
       .actions-card {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-        padding: 14px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
       }
 
       .actions-group {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        width: auto;
       }
 
       .actions-group button {
-        width: 100%;
+        width: auto;
       }
 
       .actions-note {
@@ -1211,6 +1254,8 @@ Que venham muitos momentos felizes até o niver 100!</textarea>
         timingsPanel.hidden = tab !== "timings";
         messagesPanel.hidden = tab !== "messages";
       }
+
+      editorScreen.dataset.activeTab = activeEditorTab;
 
       mobileTabButtons.forEach((button) => {
         const isActive = button.dataset.tab === activeEditorTab;
